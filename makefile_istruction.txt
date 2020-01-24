@@ -1,0 +1,236 @@
+Sistemi operativi, A.A. 2016/2017 (E. Ingrassia)
+Scaletta tutoraggio #7, 09.05.2017
+
+1. Unione di liste ordinate [merge_sorted_lists.c]
+
+2. Utility make e Makefile
+
+   2.1 Meccanismo per automatizzare la compilazione di file sorgenti
+       2.1.1 Definisce un linguaggio per descrivere le relazioni
+             tra sorgenti, file oggetto ed eseguibili
+       2.1.2 Motivazioni:
+             1) i tempi di compilazione possono essere
+                molto lunghi per programmi grandi.
+                Conviene ricompilare solamente se un sorgente
+                e' stato aggiornato
+             2) piu' agevole rispetto alla compilazione manuale
+       2.1.3 Puo' essere utilizzato con qualsiasi linguaggio
+             che abbia un compilatore eseguibile da riga di comando
+
+   2.2 Attua regole della forma
+       +---------------------+
+       |Target: Prerequisites|
+       |<TAB>Recipe          |
+       |<TAB>Recipe          |
+       |...                  |
+       |<TAB>Recipe          |
+       +---------------------+
+
+       ATTENZIONE!!
+       +---------------------------------------------------------------+
+       |Ogni recipe che inizia su una nuova linea deve essere preceduto|
+       |da un carattere <TAB>                                          |
+       +---------------------------------------------------------------+
+
+       2.2.1 Target e' tipicamente un file
+       2.2.2 Prerequistes e' una lista di file
+       2.2.3 Recipe e' un comando da eseguire
+       2.2.4 Il recipe associato ad un target viene
+             eseguito quando:
+             1) non esiste (nella directory in cui make e' invocato)
+                un file di nome target **e** vi sono dei prerequisiti
+             2) il file di target esiste ma uno o piu' prerequisiti
+                sono stati aggiornati dopo la sua generazione
+
+       2.2.5 Esempio di regola:
+             +--------------------------------------------------------------------+
+             |merge_sorted_lists: merge_sorted_lists.c                            |
+             |    gcc -Wall -Wextra -O3 merge_sorted_lists.c -o merge_sorted_lists|
+             +--------------------------------------------------------------------+
+             Il target e' l'eseguibile merge_sorted_lists.
+             La lista dei prerequisiti contiene il file merge_sorted_lists.c.
+             Il recipe e' il comando per la compilazione.
+
+   2.3 Invocazione di make
+       2.3.1 Le regole vanno elencate in un file
+             2.3.1.1 Il nome puo' essere arbitrario (usare flag -f)
+             2.3.1.2 make invocato senza il flag -f cerca un file chiamato
+                     (nell'ordine):
+                     GNUmakefile, makefile o Makefile
+             2.3.1.3 Tipicamente si utilizza Makefile
+       2.3.2 make puo' essere invocato su uno o piu' target specifici
+             Esempio:
+             +--------------------------+
+             |$ make merge_sorted_lists |
+             +--------------------------+
+       2.3.3 Se non si specificano target viene valutato solamente il primo
+
+   2.4 Azioni
+       2.4.1 Un target senza prerequisiti e' chiamato azione
+             o target phony (fasullo).
+             Esempio:
+             +--------------------------------+
+             |clean:                          |
+             |    rm -f *~ merge_sorted_lists |
+             +--------------------------------+
+
+       2.4.2 Un target senza prerequisiti si considera
+             sempre aggiornato se esiste un file con quel nome
+             2.4.2.1 Se creo un file di nome clean la regola
+                     associata al target clean non verra' mai
+                     piu' eseguita
+             2.4.2.2 Bisogna dire esplicitamente che il target e' fasullo
+                     +--------------------------------+
+                     |.PHONY: clean                   |
+                     |clean:                          |
+                     |    rm -f *~ merge_sorted_lists |
+                     +--------------------------------+
+                     .PHONY e' un target built-in i cui prerequisiti sono azioni.
+                     Ogni volta che si invoca make su un target phony,
+                     la regola associata viene sempre eseguita
+
+       2.4.3 Se un Makefile contiene piu' target e se ne vuole effettuare
+             la valutazione e' necessario invocare make su ogni singolo target
+             +--------------------------------------------------------------------+
+             |merge_sorted_lists: merge_sorted_lists.c                            |
+             |    gcc -Wall -Wextra -O3 merge_sorted_lists.c -o merge_sorted_lists|
+             |                                                                    |
+             |sort_file_int: sort_file_int.c                                      |
+             |    gcc -Wall -Wextra -O3 sort_file_int.c -o sort_file_int          |
+             +--------------------------------------------------------------------+
+             Per semplificare l'invocazione si crea tipicamente un target phony,
+             chiamato **all**, il cui prerequisito e' l'elenco dei target
+             +--------------------------+
+             |all: merge_sorted_lists \ |
+             |     sort_file_int        |
+             |                          |
+             |.PHONY: all clean         |
+             +--------------------------+
+
+   2.5 Variabili
+       2.5.1 Assegnazione base: VAR := val
+       2.5.2 Accesso al contenuto di una variabile: $(VAR)
+       2.5.3 Assegnazione di una variabile
+             2.5.3.1 Espansione completa di una variabile alla lettura
+
+                     VAR := val
+
+             2.5.3.2 Espansione testuale di una variabile (val non viene
+                     ulteriormente espansa)
+
+                     VAR = val
+
+             2.5.3.3 Definizione condizionale: assegna a VAR il valore val
+                     solamente se VAR e' vuota
+
+                     VAR ?= val
+
+             2.5.3.4 Concatenazione
+
+                     VAR += val
+
+             +---------------------------------------------------------------+
+             |CC := gcc                                                      |
+             |CFLAGS := -Wall -Wextra -O3                                    |
+             |                                                               |
+             |all: merge_sorted_lists \                                      |
+             |     sort_file_int                                             |
+             |                                                               |
+             |merge_sorted_lists: merge_sorted_lists.c                       |
+             |    $(CC) $(CFLAGS) merge_sorted_lists.c -o merge_sorted_lists |
+             |                                                               |
+             |sort_file_int: sort_file_int.c                                 |
+             |    $(CC) $(CFLAGS) sort_file_int.c -o sort_file_int           |
+             +---------------------------------------------------------------+
+
+       2.5.4 Variabili automatiche
+             2.5.4.1 Variabili specifiche di make utilizzabili solo nei recipe.
+                     Permettono di semplificarne la scrittura
+             2.5.4.2 Principali variabili:
+                     $^ : lista di prerequisiti del target
+                     $< : primo prerequisito del target
+                     $@ : target
+                     +-----------------------------------------+
+                     |merge_sorted_lists: merge_sorted_lists.c |
+                     |    $(CC) $(CFLAGS) $^ -o $@             |
+                     |                                         |
+                     |sort_file_int: sort_file_int.c           |
+                     |    $(CC) $(CFLAGS) $^ -o $@             |
+                     +-----------------------------------------+
+
+       2.5.5 Variabili implicite (vedi 2.6.3)
+
+       2.5.6 Makefile
+             +-----------------------------------------+
+             |CC := gcc                                |
+             |CFLAGS := -Wall -Wextra -O3              |
+             |                                         |
+             |PROGS := merge_sorted_lists \            |
+             |         sort_file_int                   |
+             |                                         |
+             |all: $(PROGS)                            |
+             |                                         |
+             |merge_sorted_lists: merge_sorted_lists.c |
+             |    $(CC) $(CFLAGS) $^ -o $@             |
+             |                                         |
+             |sort_file_int: sort_file_int.c           |
+             |    $(CC) $(CFLAGS) $^ -o $@             |
+             |                                         |
+             |.PHONY: clean                            |
+             |clean:                                   |
+             |    rm -f *~ $(PROGS)                    |
+             +-----------------------------------------+
+
+  2.6 Regole implicite
+      2.6.1 make possiede un insieme di regole implicite che coprono
+            casi comuni come, ad esempio, la generazione di un eseguibile
+            a partire da un sorgente C
+
+      2.6.2 Permettono di scrivere regole formate dal solo target
+            o da target e prerequisiti, senza un recipe esplicito
+            2.6.2.1 Esempio:
+                    +---------------------------+
+                    |main: main.c list.h list.c |
+                    +---------------------------+
+            2.6.2.2 Se il target dipende da un solo prerequisito con il suo
+                    stesso nome (a meno dell'estensione), il prerequisito si
+                    puo' omettere:
+                    +---------------------------+
+                    |merge_sorted_lists:        |
+                    +---------------------------+
+                    make cerca un file con il nome del target e sceglie il
+                    recipe implicito da utilizzare in base alla sua estensione
+
+      2.6.3 Variabili implicite
+            2.6.3.1 Variabili utilizzate nelle regole implicite.
+                    Essendo ridefinibili dall'utente permettono
+                    di "controllare" l'esecuzione dei recipe impliciti
+
+            2.6.3.2 Principali variabili
+                    CC      : compilatore
+                    CFLAGS  : flag per la fase di compilazione
+                    LDFLAGS : flag per il linker (-L)
+                    LDLIBS  : flag per il linker (-l<libname>)
+
+            2.6.3.3 Il recipe implicito eseguito per la compilazione
+                    di un eseguibile x a partire da un singolo sorgente x.c e':
+                    +----------------------------------------------+
+                    |$(CC) $(CFLAGS) $(LDFLAGS) x.c $(LDLIBS) -o x |
+                    +----------------------------------------------+
+
+      2.6.4 Makefile
+            +------------------------------+
+            |CC := gcc                     |
+            |CFLAGS := -Wall -Wextra -O3   |
+            |PROGS := merge_sorted_lists \ |
+            |         sort_file_int \      |
+            |         main                 |
+            |                              |
+            |all: $(PROGS)                 |
+            |                              |
+            |main: main.c list.c list.h    |
+            |                              |
+            |.PHONY: all clean             |
+            |clean:                        |
+            |    rm -f *~ $(PROGS)         |
+            +------------------------------+
